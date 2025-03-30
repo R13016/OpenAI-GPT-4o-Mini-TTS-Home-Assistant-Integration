@@ -1,4 +1,5 @@
 import logging
+import re
 
 from homeassistant.components.tts import (
     ATTR_AUDIO_OUTPUT,
@@ -12,67 +13,87 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, OPENAI_TTS_VOICES
-from .gpt4o import GPT4oClient
+from .gpt4o import GPT4oClient, GPT4oChatClient
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def should_use_web_search(text: str, options: dict) -> bool:
+    if options.get("use_web_search", False):
+        return True
+
+    search_keywords = ["weather", "news", "today", "score", "price", "update", "current", "latest"]
+    question_words = ["what", "who", "how", "where", "why", "when"]
+
+    lower_text = text.strip().lower()
+    if any(lower_text.startswith(word) for word in question_words):
+        return True
+    if any(word in lower_text for word in search_keywords):
+        return True
+
+    return False
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up GPT-4o TTS from a config entry."""
+    """Set up GPT-4o TTS with optional web search from a config entry."""
     client = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([OpenAIGPT4oTTSProvider(config_entry, client)])
+    chat_client = GPT4oChatClient(hass, config_entry)
+    async_add_entities([OpenAIGPT4oTTSProvider(config_entry, client, chat_client)])
+
 
 class OpenAIGPT4oTTSProvider(TextToSpeechEntity):
-    """GPT-4o TTS => 'tts.openai_gpt4o_tts_say' in Developer Tools."""
+    """GPT-4o TTS provider with optional web search."""
 
-    def __init__(self, config_entry: ConfigEntry, client: GPT4oClient) -> None:
+    def __init__(self, config_entry: ConfigEntry, client: GPT4oClient, chat_client: GPT4oChatClient) -> None:
         self._config_entry = config_entry
         self._client = client
+        self._chat_client = chat_client
         self._name = "OpenAI GPT-4o Mini TTS"
         self._attr_unique_id = f"{config_entry.entry_id}-tts"
 
     @property
     def name(self) -> str:
-        """Friendly name for the entity listing."""
         return self._name
 
     @property
     def default_language(self) -> str:
-        """Return the default language code."""
         return "en"
 
     @property
     def supported_languages(self) -> list[str]:
-        """Return a list of supported languages (mainly English)."""
         return ["en"]
 
     @property
     def default_options(self) -> dict:
-        """Default TTS options, e.g. mp3."""
         return {ATTR_AUDIO_OUTPUT: "mp3"}
 
     @property
     def supported_options(self) -> list[str]:
-        """Which TTS options can be overridden in the UI or service call."""
-        return [ATTR_VOICE, "instructions", ATTR_AUDIO_OUTPUT]
+        return [ATTR_VOICE, "instructions", ATTR_AUDIO_OUTPUT, "use_web_search"]
 
     async def async_get_tts_audio(
         self, message: str, language: str, options: dict | None = None
     ) -> TtsAudioType:
-        """Called by Home Assistant to produce audio from text."""
-        audio_format, audio_data = await self._client.get_tts_audio(message, options)
-        if not audio_data:
-            return None, None
-        return audio_format, audio_data
+        if options is None:
+            options = {}
+
+        if should_use_web_search(message, options):
+            _LOGGER.debug("Routing message through GPT-4o chat + web search flow")
+            response = await self._chat_client.get_web_enhanced_response(message)
+            if not response:
+                _LOGGER.warning("Chat + web search failed, falling back to raw TTS")
+                return await self._client.get_tts_audio(message, options)
+            return await self._client.get_tts_audio(response, options)
+
+        return await self._client.get_tts_audio(message, options)
 
     def async_get_supported_voices(self, language: str) -> list[Voice] | None:
-        """Return known GPT-4o voices for the voice dropdown (if HA version supports it)."""
         return [Voice(vid, vid.capitalize()) for vid in OPENAI_TTS_VOICES]
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Optional: expose provider name or debug info."""
         return {"provider": self._name}
