@@ -1,6 +1,8 @@
 import logging
 import requests
 
+from .const import CONF_API_KEY
+
 _LOGGER = logging.getLogger(__name__)
 
 class GPT4oClient:
@@ -10,9 +12,8 @@ class GPT4oClient:
         self.hass = hass
         self.entry = entry
 
-        self._api_key = entry.data["api_key"]
+        self._api_key = entry.data[CONF_API_KEY]
         self._voice = entry.data.get("voice")
-        # This single field now contains the combined instructions
         self._instructions = entry.data.get("instructions")
         self._model = "gpt-4o-mini-tts"
 
@@ -27,8 +28,10 @@ class GPT4oClient:
 
         headers = {
             "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "home-assistant-openai-tts"
         }
+
         payload = {
             "model": self._model,
             "voice": voice,

@@ -1,5 +1,4 @@
 import logging
-import re
 
 from homeassistant.components.tts import (
     ATTR_AUDIO_OUTPUT,
@@ -13,7 +12,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, OPENAI_TTS_VOICES
-from .gpt4o import GPT4oClient, GPT4oChatClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,16 +37,17 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up GPT-4o TTS with optional web search from a config entry."""
-    client = hass.data[DOMAIN][config_entry.entry_id]
-    chat_client = GPT4oChatClient(hass, config_entry)
-    async_add_entities([OpenAIGPT4oTTSProvider(config_entry, client, chat_client)])
+    """Set up GPT-4o TTS from a config entry."""
+    entry_data = hass.data[DOMAIN][config_entry.entry_id]
+    tts_client = entry_data["tts_client"]
+    chat_client = entry_data["chat_client"]
+    async_add_entities([OpenAIGPT4oTTSProvider(config_entry, tts_client, chat_client)])
 
 
 class OpenAIGPT4oTTSProvider(TextToSpeechEntity):
     """GPT-4o TTS provider with optional web search."""
 
-    def __init__(self, config_entry: ConfigEntry, client: GPT4oClient, chat_client: GPT4oChatClient) -> None:
+    def __init__(self, config_entry: ConfigEntry, client, chat_client) -> None:
         self._config_entry = config_entry
         self._client = client
         self._chat_client = chat_client
@@ -69,7 +68,10 @@ class OpenAIGPT4oTTSProvider(TextToSpeechEntity):
 
     @property
     def default_options(self) -> dict:
-        return {ATTR_AUDIO_OUTPUT: "mp3"}
+        return {
+            ATTR_AUDIO_OUTPUT: "mp3",
+            "use_web_search": False
+        }
 
     @property
     def supported_options(self) -> list[str]:
@@ -96,4 +98,7 @@ class OpenAIGPT4oTTSProvider(TextToSpeechEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        return {"provider": self._name}
+        return {
+            "provider": self._name,
+            "web_search_enabled": self._config_entry.options.get("use_web_search", False)
+        }

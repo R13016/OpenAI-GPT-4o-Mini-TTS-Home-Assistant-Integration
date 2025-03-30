@@ -1,13 +1,13 @@
 {
-    "domain": "openai_gpt4o_tts",
-    "name": "OpenAI GPT-4o Mini TTS",
+    "domain": "openai_gpt4o_tts_websearch",
+    "name": "OpenAI GPT-4o Mini TTS with Websearch",
     "version": "1.0.0",
-    "documentation": "https://github.com/wifiuk/OpenAI-GPT-4o-Mini-TTS-Home-Assistant-Integration",
+    "documentation": "https://github.com/R13016/OpenAI-GPT-4o-Mini-TTS-Home-Assistant-Integration",
     "requirements": [
       "requests>=2.31.0"
     ],
     "codeowners": [
-      "@wifiuk"
+      "@r13016"
     ],
     "iot_class": "cloud_polling",
     "config_flow": true

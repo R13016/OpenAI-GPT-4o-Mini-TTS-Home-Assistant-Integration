@@ -49,6 +49,9 @@ class OpenAITTSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             combined_instructions = "\n".join(instructions_parts)
             user_input[CONF_INSTRUCTIONS] = combined_instructions
+            user_input["use_web_search"] = user_input.get("use_web_search", False)
+
+            _LOGGER.debug("Final combined instructions:\n%s", combined_instructions)
 
             return self.async_create_entry(title="OpenAI GPT-4o Mini TTS", data=user_input)
 

@@ -7,6 +7,7 @@ PLATFORMS = ["tts"]
 CONF_API_KEY = "api_key"
 CONF_VOICE = "voice"
 CONF_INSTRUCTIONS = "instructions"
+CONF_USE_WEB_SEARCH = "use_web_search"
 
 # Default voice setting
 DEFAULT_VOICE = "sage"
