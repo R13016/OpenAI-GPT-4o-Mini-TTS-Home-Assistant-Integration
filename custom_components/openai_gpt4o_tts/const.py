@@ -1,6 +1,6 @@
 """Constants for OpenAI GPT-4o Mini TTS integration."""
 
-DOMAIN = "openai_gpt4o_tts"
+DOMAIN = "openai_gpt4o_tts_websearch"
 PLATFORMS = ["tts"]
 
 # Configuration keys
