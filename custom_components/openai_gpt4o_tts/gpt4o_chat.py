@@ -24,7 +24,7 @@ class GPT4oChatClient:
         payload = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
-            "tools": [{"type": "web_search"}],
+            "tools": [{"type": "web_search_preview"}],
             "tool_choice": "auto"
         }
 
